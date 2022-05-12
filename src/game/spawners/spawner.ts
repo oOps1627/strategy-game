@@ -1,4 +1,5 @@
 import Rectangle = Phaser.GameObjects.Rectangle;
+import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -11,6 +12,7 @@ export interface ISpawnerConstructorParams {
     color: number;
     spawnInterval: number;
     maxHP: number;
+    gameObjectFactory: GameObjectFactory;
 }
 
 export class Spawner {
@@ -18,7 +20,9 @@ export class Spawner {
     private _onSpawn: (spawner: Spawner) => void;
     private _currentHP: number;
     private _spawnInterval;
+    private _gameObjectFactory: GameObjectFactory;
 
+    readonly id = String(Date.now()) + String(Math.random());
     x: number;
     y: number;
     team: string;
@@ -26,6 +30,9 @@ export class Spawner {
     color: number;
     spawnInterval: number;
     maxHP: number;
+    graphic: Rectangle;
+    textGraphic: Phaser.GameObjects.Text;
+    size: number;
 
     get currentHP(): number {
         return this._currentHP;
@@ -40,15 +47,26 @@ export class Spawner {
         this.spawnInterval = params.spawnInterval;
         this.maxHP = params.maxHP;
         this._currentHP = params.maxHP;
+        this._gameObjectFactory = params.gameObjectFactory;
 
+        this._setSize();
         this.createSpawnInterval();
+        this._createGraphic();
+    }
+
+    private _createGraphic(): void {
+        this.graphic = this._gameObjectFactory.rectangle(this.x, this.y, this.size, this.size);
+        this.textGraphic = this._gameObjectFactory.text(this.x + this.size / 2, this.y - this.size / 2, '', {fontSize: '9px'});
+        this.graphic.setData('id', this.id);
+        this.updateGraphic();
+    }
+
+    private _setSize(): void {
+        this.size = this.maxHP / 14;
     }
 
     createSpawnInterval(): void {
-        if (this._spawnInterval) {
-            clearInterval(this._spawnInterval);
-        }
-
+        clearInterval(this._spawnInterval);
         this._spawnInterval = setInterval(() => this._onSpawn && this._onSpawn(this), this.spawnInterval);
     }
 
@@ -76,26 +94,23 @@ export class Spawner {
 
     destroy(): void {
         this.team = NO_TEAM;
-        this._currentHP = 0;
         this.color = NO_TEAM_COLOR;
         this.restoreHP(this.maxHP);
         this._onSpawn = () => null;
-        if (this._spawnInterval) {
-            clearInterval(this._spawnInterval);
-        }
+        clearInterval(this._spawnInterval);
+        this.updateGraphic();
     }
 
     capture(data: {team: string, color: number, mass: number}): void {
         this.team = data.team;
         this.color = data.color;
+        this.updateGraphic();
     }
 
-    updateSpawnerGraphic(spawnerGraphic: Rectangle): void {
-        const spawner: Spawner = spawnerGraphic.getData('spawner');
-        const hp = spawner.currentHP;
-        const maxHP = spawner.maxHP;
-        const alpha = (hp / maxHP) > 1 ? 1 : hp / maxHP;
-        spawnerGraphic.setFillStyle(spawner.color, alpha);
+    updateGraphic(): void {
+        const alpha = (this.currentHP / this.maxHP) > 1 ? 1 : this.currentHP / this.maxHP;
+        this.graphic.setFillStyle(this.color, alpha);
+        this.textGraphic.setText(`${this._currentHP} / ${this.maxHP}`);
     }
 }
 
