@@ -1,4 +1,7 @@
+import Rectangle = Phaser.GameObjects.Rectangle;
+
 export const NO_TEAM = '__NO_TEAM';
+export const NO_TEAM_COLOR = 0x666666;
 
 export interface ISpawnerConstructorParams {
     x: number;
@@ -8,11 +11,11 @@ export interface ISpawnerConstructorParams {
     color: number;
     spawnInterval: number;
     maxHP: number;
-    currentHP: number;
 }
 
-class Spawner {
+export class Spawner {
     private _onDestroy: (spawner: Spawner) => void;
+    private _onSpawn: (spawner: Spawner) => void;
     private _currentHP: number;
     private _spawnInterval;
 
@@ -36,18 +39,31 @@ class Spawner {
         this.color = params.color;
         this.spawnInterval = params.spawnInterval;
         this.maxHP = params.maxHP;
-        this._currentHP = params.currentHP;
+        this._currentHP = params.maxHP;
+
+        this.createSpawnInterval();
+    }
+
+    createSpawnInterval(): void {
+        if (this._spawnInterval) {
+            clearInterval(this._spawnInterval);
+        }
+
+        this._spawnInterval = setInterval(() => this._onSpawn && this._onSpawn(this), this.spawnInterval);
     }
 
     subscribeOnDestroy(cb: (spawner: Spawner) => void): void {
         this._onDestroy = cb;
     }
 
+    subscribeOnSpawn(cb: (spawner: Spawner) => void): void {
+        this._onSpawn = cb;
+    }
+
     makeDamage(mass: number): void {
         this._currentHP -= mass;
         if (this._currentHP <= 0 && this._onDestroy) {
             this._onDestroy(this);
-            this.destroy();
         }
     }
 
@@ -61,17 +77,25 @@ class Spawner {
     destroy(): void {
         this.team = NO_TEAM;
         this._currentHP = 0;
+        this.color = NO_TEAM_COLOR;
+        this.restoreHP(this.maxHP);
+        this._onSpawn = () => null;
+        if (this._spawnInterval) {
+            clearInterval(this._spawnInterval);
+        }
+    }
+
+    capture(data: {team: string, color: number, mass: number}): void {
+        this.team = data.team;
+        this.color = data.color;
+    }
+
+    updateSpawnerGraphic(spawnerGraphic: Rectangle): void {
+        const spawner: Spawner = spawnerGraphic.getData('spawner');
+        const hp = spawner.currentHP;
+        const maxHP = spawner.maxHP;
+        const alpha = (hp / maxHP) > 1 ? 1 : hp / maxHP;
+        spawnerGraphic.setFillStyle(spawner.color, alpha);
     }
 }
 
-export class SpawnerFactory {
-    newLevel1Spawner(data: Pick<ISpawnerConstructorParams, 'x' | 'y' | 'team' | 'color'>): Spawner {
-        return {
-            ...data,
-            bubbleMass: 20,
-            spawnInterval: 1000,
-            maxHP: 500,
-            currentHP: 500
-        }
-    }
-}

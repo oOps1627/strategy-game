@@ -4,65 +4,14 @@ import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import MoveTo from 'phaser3-rex-plugins/plugins/moveto.js';
-import { ISpawnerConstructorParams, SpawnerFactory } from "./spawner-factory";
-
-interface IPosition {
-    x: number;
-    y: number;
-}
-
-interface IPoint {
-    position: IPosition;
-    possibleMoves: IPosition[];
-    spawner?: ISpawnerConstructorParams;
-}
-
-const spawnerFactory = new SpawnerFactory();
-
-const map: IPoint[] = [
-    {
-        position: {x: 20, y: 400},
-        possibleMoves: [
-            {x: 20, y: 20},
-            {x: 400, y: 200}
-        ],
-        spawner: spawnerFactory.newLevel1Spawner({
-            team: 'A',
-            color: 0x871734,
-            x: 20,
-            y: 400,
-        })
-    },
-    {
-        position: {x: 400, y: 200},
-        possibleMoves: [
-            {x: 20, y: 20},
-            {x: 20, y: 400}
-        ],
-        spawner:  spawnerFactory.newLevel1Spawner({
-            team: 'B',
-            color: 0x341690,
-            x: 400,
-            y: 200,
-        })
-    },
-    {
-        position: {x: 20, y: 20},
-        possibleMoves: [
-            {x: 20, y: 400},
-            {x: 400, y: 200}
-        ],
-        spawner:  spawnerFactory.newLevel1Spawner({
-            team: 'C',
-            color: 0x618234,
-            x: 20,
-            y: 20,
-        })
-    }
-]
+import {NO_TEAM, Spawner} from "./spawners/spawner";
+import {IMapPoint, IPosition} from "./models";
+import {LEVEL1_MAP} from "./maps/level1.map";
+import Rectangle = Phaser.GameObjects.Rectangle;
+import {Bubble} from "./bubbles/bubble";
 
 export class Level1 extends Phaser.Scene {
-    map: IPoint[] = map;
+    map: IMapPoint[];
     graphics: Graphics;
     bubbleGroups = new Map<string, Group>();
     spawnerGroups = new Map<string, Group>();
@@ -78,20 +27,32 @@ export class Level1 extends Phaser.Scene {
     }
 
     create() {
+        this.map = LEVEL1_MAP;
+
         this._setGroups();
         this._drawPaths();
         this._createSpawners();
         this._createBubblesCollides();
         this._createSpawnersCollides();
-        this.map.forEach(point => {
-            const spawner = point.spawner;
-            if (spawner) {
-                setInterval(() => {
-                    const bubble = this._createBubble(spawner, point.position);
-                    this._moveBubble(bubble, point.possibleMoves);
-                }, spawner.spawnInterval);
-            }
+
+        this.map.filter(i => !!i.spawner).forEach(point => {
+            const spawner = <Spawner>point.spawner;
+            spawner.subscribeOnSpawn(() => {
+                const bubble = this._createBubble(spawner);
+                this._moveBubble(bubble, point.possibleMoves);
+            })
         })
+    }
+
+    private _createBubble(spawner: Spawner): Ellipse {
+        const bubble = new Bubble({spawner});
+
+        let item = this.add.ellipse(spawner.x, spawner.y, bubble.size, bubble.size);
+        item.setFillStyle(spawner.color);
+        item.setData('bubble', bubble);
+        this.bubbleGroups.get(spawner.team)?.add(item);
+
+        return item;
     }
 
     private _moveBubble(bubble: Ellipse, possibleMoves: IPosition[], moveTo: MoveTo = new MoveTo(bubble, {speed: 100})): void {
@@ -103,7 +64,7 @@ export class Level1 extends Phaser.Scene {
         moveTo.moveTo(direction.x, direction.y);
 
         moveTo.on('complete', (bubble, moveTo) => {
-            let point = this.map.find(point => point.position.x === bubble.x && point.position.y === bubble.y);
+            let point = this._findPointByPosition(bubble);
             const movedFrom = bubble.getData('movedFrom');
             let moves = point?.possibleMoves.filter(p => (p.x !== movedFrom.x || p.y !== movedFrom.y));
             if (moves?.length) {
@@ -127,14 +88,14 @@ export class Level1 extends Phaser.Scene {
 
     private _createSpawners(): void {
         this.map.forEach(point => {
-            if (point.spawner) {
-                this.graphics.fillStyle(point.spawner.color);
-                let rect = this.add.rectangle(point.position.x, point.position.y, 30, 30);
-                rect.setData('team', point.spawner.team);
-                rect.setData('HP', point.spawner.currentHP);
-                rect.setData('maxHP', point.spawner.maxHP);
-                rect.setFillStyle(point.spawner.color);
-                this.spawnerGroups.get(point.spawner.team)?.add(rect);
+            const spawner = point.spawner;
+
+            if (spawner) {
+                let rect = this.add.rectangle(point.position.x, point.position.y, spawner.maxHP / 14, spawner.maxHP / 14);
+                rect.setFillStyle(spawner.color);
+                rect.setData('spawner', point.spawner);
+                spawner.subscribeOnDestroy(() => this._onSpawnerDestroy(rect));
+                this.spawnerGroups.get(spawner.team)?.add(rect);
             }
         });
     }
@@ -146,17 +107,8 @@ export class Level1 extends Phaser.Scene {
                 this.spawnerGroups.set(point.spawner.team, this.physics.add.group().setName(point.spawner.team));
             }
         });
-    }
 
-    private _createBubble(spawner: ISpawnerConstructorParams, position: IPosition): Ellipse {
-        let size = this._getBubbleSizeByMass(spawner.bubbleMass);
-        let item = this.add.ellipse(position.x, position.y, size, size);
-        item.setFillStyle(spawner.color);
-        item.setData('team', spawner.team);
-        this._setBubbleMass(item, spawner.bubbleMass);
-        this.bubbleGroups.get(spawner.team)?.add(item);
-
-        return item;
+        this.spawnerGroups.set(NO_TEAM, this.physics.add.group().setName(NO_TEAM));
     }
 
     private _createBubblesCollides(): void {
@@ -173,96 +125,98 @@ export class Level1 extends Phaser.Scene {
     private _createSpawnersCollides(): void {
         this.spawnerGroups.forEach(spawnerGroup => {
             this.bubbleGroups.forEach(bubbleGroup => {
-                const collider = this.physics.add.collider(spawnerGroup, bubbleGroup, <any>this._onSpawnersCollide.bind(this));
+                const collider = this.physics.add.collider(spawnerGroup, bubbleGroup, <any>this._onBubbleCollidesWithSpawner.bind(this));
                 collider.overlapOnly = true;
             });
         });
     }
 
-    private _onSpawnersCollide(spawner: Graphics, bubble: Ellipse): void {
-        const isSameTeam = spawner.getData('team') === bubble.getData('team');
-        const maxHP = spawner.getData('maxHP');
-        const HP = spawner.getData('HP');
-        const bubbleMass = this._getBubbleMass(bubble);
+    private _onBubbleCollidesWithSpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
+        const spawner: Spawner = spawnerGraphic.getData('spawner');
+        const bubble: Bubble = bubbleGraphic.getData('bubble');
+        const isSameTeam = spawner.team === bubble.team;
 
         if (isSameTeam) {
-            const isSpawnerFullHP = maxHP === HP;
-
-            if (!isSpawnerFullHP) {
-                if (bubbleMass + HP > maxHP) {
-                    const neededMass = maxHP - HP;
-                    spawner.setData('HP', HP + neededMass);
-                    this._setBubbleMass(bubble, bubbleMass - neededMass);
-                } else {
-                    spawner.setData('HP', HP + bubbleMass);
-                    bubble.destroy(true);
-                }
-
-                this._updateSpawner(spawner);
-
-            }
+            this._onBubbleCollidesWithAllySpawner(spawnerGraphic, bubbleGraphic);
         } else {
-            spawner.setData('HP', HP - bubbleMass);
-            bubble.destroy(true);
-            this._updateSpawner(spawner);
-
-            if (spawner.getData('HP') <= 0) {
-                const team = spawner.getData('team');
-                spawner.destroy(true);
-
-                if (!this.spawnerGroups.get(team)?.children?.size) {
-                    this.spawnerGroups.get(team)?.destroy();
-                }
-
-
+            if (spawner.team === NO_TEAM) {
+                this._onBubbleCollidesWithNeutralSpawner(spawnerGraphic, bubbleGraphic);
+            } else {
+                this._onBubbleCollidesWithEnemySpawner(spawnerGraphic, bubbleGraphic);
             }
         }
+
+        spawner.updateSpawnerGraphic(spawnerGraphic);
     }
 
-    private _updateSpawner(spawner: Graphics): void {
-        const hp = spawner.getData('HP');
-        const maxHP = spawner.getData('maxHP');
-        const alpha = (hp / maxHP) > 1 ? 1 : hp / maxHP;
+    private _onBubbleCollidesWithAllySpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
+        const spawner: Spawner = spawnerGraphic.getData('spawner');
+        if (spawner.maxHP === spawner.currentHP)
+            return;
 
-        spawner.setAlpha(alpha);
-    }
+        const bubble: Bubble = bubbleGraphic.getData('bubble');
 
-    private _onBubblesCollide(bubble1: GameObjectWithBody, bubble2: GameObjectWithBody): void {
-        const newBubble1Mass = this._getBubbleMass(bubble1) - this._getBubbleMass(bubble2);
-        const newBubble2Mass = this._getBubbleMass(bubble2) - this._getBubbleMass(bubble1);
-        if (newBubble1Mass <= 0) {
-            bubble1.destroy(true);
+        if (bubble.mass + spawner.currentHP > spawner.maxHP) {
+            const neededMass = spawner.maxHP - spawner.currentHP;
+            spawner.restoreHP(neededMass);
+            bubble.setMass(bubble.mass - neededMass);
         } else {
-            this._setBubbleMass(<any>bubble1, newBubble1Mass);
-        }
-
-        if (newBubble2Mass <= 0) {
-            bubble2.destroy(true);
-        } else {
-            this._setBubbleMass(<any>bubble2, newBubble2Mass);
+            spawner.restoreHP(bubble.mass);
+            bubbleGraphic.destroy(true);
         }
     }
 
-    private _setBubbleMass(bubble: Ellipse, mass: number): void {
-        bubble.setData('mass', mass);
-        this._updateBubbleSize(bubble);
+    private _onBubbleCollidesWithNeutralSpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
+        const spawner: Spawner = spawnerGraphic.getData('spawner');
+        const bubble: Bubble = bubbleGraphic.getData('bubble');
+
+        spawner.capture({mass: bubble.mass, team: bubble.team, color: bubbleGraphic.fillColor});
+        spawner.subscribeOnSpawn(() => {
+            const point = <IMapPoint>this._findPointByPosition(spawner);
+            const bubble = this._createBubble(spawner);
+            this._moveBubble(bubble, point.possibleMoves);
+        })
+        bubbleGraphic.destroy(true);
+        spawnerGraphic.setData('spawner', spawner);
+        spawner.createSpawnInterval();
+        spawner.subscribeOnDestroy(() => this._onSpawnerDestroy(<any>spawnerGraphic));
+        this.spawnerGroups.get(NO_TEAM)?.remove(spawnerGraphic);
+        this.spawnerGroups.get(bubble.team)?.add(spawnerGraphic);
     }
 
-    private _getBubbleMass(bubble: Ellipse | GameObjectWithBody): number {
-        return bubble.getData('mass');
+    private _onBubbleCollidesWithEnemySpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
+        const spawner: Spawner = spawnerGraphic.getData('spawner');
+        const bubble: Bubble = bubbleGraphic.getData('bubble');
+
+        spawner.makeDamage(bubble.mass);
+        bubbleGraphic.destroy(true);
     }
 
-    private _getBubbleSizeByMass(mass: number): number {
-        const radius = Math.sqrt(mass * 3.14);
-
-        return radius * 2;
+    private _findPointByPosition(position: IPosition): IMapPoint | undefined {
+        return this.map.find(point => point.position.x === position.x && point.position.y === position.y);
     }
 
-    private _updateBubbleSize(bubble: Ellipse): void {
-        const mass = this._getBubbleMass(bubble);
-        const radius = Math.sqrt(mass * 3.14);
-        const currentRadius = bubble.width / 2;
-        bubble.setScale(radius / currentRadius);
+    private _onSpawnerDestroy(spawnerGraphics: Rectangle): void {
+        const spawner: Spawner = spawnerGraphics.getData('spawner');
+        this.spawnerGroups.get(spawner.team)?.remove(spawnerGraphics);
+        spawner.destroy();
+        spawnerGraphics.setData('spawner', spawner);
+        this.spawnerGroups.get(NO_TEAM)?.add(spawnerGraphics);
+        spawner.updateSpawnerGraphic(spawnerGraphics);
+    }
+
+    private _onBubblesCollide(bubble1Graphic: GameObjectWithBody, bubble2Graphic: GameObjectWithBody): void {
+        const bubble1: Bubble = bubble1Graphic.getData('bubble');
+        const bubble2: Bubble = bubble2Graphic.getData('bubble');
+        bubble1.setMass(bubble1.mass - bubble2.mass);
+        bubble2.setMass(bubble2.mass - bubble1.mass);
+
+        if (bubble1.mass <= 0) {
+            bubble1Graphic.destroy(true);
+        }
+        if (bubble2.mass <= 0) {
+            bubble2Graphic.destroy(true);
+        }
     }
 }
 
