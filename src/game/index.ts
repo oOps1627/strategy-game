@@ -3,7 +3,6 @@ import Graphics = Phaser.GameObjects.Graphics;
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
-import MoveTo from 'phaser3-rex-plugins/plugins/moveto.js';
 import {NO_TEAM, Spawner} from "./spawners/spawner";
 import {IMapPoint, IPosition} from "./models";
 import {LEVEL1_MAP} from "./maps/level1.map";
@@ -15,6 +14,7 @@ export class Level1 extends Phaser.Scene {
     graphics: Graphics;
     bubbleGroups = new Map<string, Group>();
     spawnerGroups = new Map<string, Group>();
+    bubblesMap: { [bubbleId: string]: Bubble } = {};
 
     constructor() {
         super('level-1');
@@ -44,33 +44,27 @@ export class Level1 extends Phaser.Scene {
         })
     }
 
-    private _createBubble(spawner: Spawner): Ellipse {
-        const bubble = new Bubble({spawner});
+    private _createBubble(spawner: Spawner): Bubble {
+        const bubble = new Bubble({spawner, gameObjectFactory: this.add});
+        this.bubbleGroups.get(spawner.team)?.add(bubble.graphic);
+        this.bubblesMap[bubble.id] = bubble;
 
-        let item = this.add.ellipse(spawner.x, spawner.y, bubble.size, bubble.size);
-        item.setFillStyle(spawner.color);
-        item.setData('bubble', bubble);
-        this.bubbleGroups.get(spawner.team)?.add(item);
-
-        return item;
+        return bubble;
     }
 
-    private _moveBubble(bubble: Ellipse, possibleMoves: IPosition[], moveTo: MoveTo = new MoveTo(bubble, {speed: 100})): void {
-        const direction = possibleMoves[getRandomInteger(0, possibleMoves.length - 1)];
-        if (!direction)
-            return;
+    private _moveBubble(bubble: Bubble, possibleMoves: IPosition[]): void {
+        const direction = this._getMoveDirection(possibleMoves);
 
-        bubble.setData('movedFrom', {x: bubble.x, y: bubble.y});
-        moveTo.moveTo(direction.x, direction.y);
-
-        moveTo.on('complete', (bubble, moveTo) => {
-            let point = this._findPointByPosition(bubble);
-            const movedFrom = bubble.getData('movedFrom');
-            let moves = point?.possibleMoves.filter(p => (p.x !== movedFrom.x || p.y !== movedFrom.y));
-            if (moves?.length) {
-                this._moveBubble(bubble, [...moves], moveTo);
-            }
+        bubble.moveTo(direction, (bubbleToMove) => {
+            let point = <IMapPoint>this._findPointByPosition(bubbleToMove.graphic);
+            return this._getMoveDirection(point.possibleMoves, bubbleToMove.movedFrom);
         });
+    }
+
+    private _getMoveDirection(possibleMoves: IPosition[], movedFrom?: IPosition): IPosition {
+        let moves = possibleMoves.filter(p => !movedFrom || (p.x !== movedFrom.x || p.y !== movedFrom.y));
+
+        return moves[getRandomInteger(0, moves.length - 1)];
     }
 
     update(time: number, delta: number) {
@@ -133,7 +127,8 @@ export class Level1 extends Phaser.Scene {
 
     private _onBubbleCollidesWithSpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
         const spawner: Spawner = spawnerGraphic.getData('spawner');
-        const bubble: Bubble = bubbleGraphic.getData('bubble');
+        const bubble: Bubble = this._getBubbleByGraphic(bubbleGraphic);
+
         const isSameTeam = spawner.team === bubble.team;
 
         if (isSameTeam) {
@@ -154,7 +149,7 @@ export class Level1 extends Phaser.Scene {
         if (spawner.maxHP === spawner.currentHP)
             return;
 
-        const bubble: Bubble = bubbleGraphic.getData('bubble');
+        const bubble: Bubble = this._getBubbleByGraphic(bubbleGraphic);
 
         if (bubble.mass + spawner.currentHP > spawner.maxHP) {
             const neededMass = spawner.maxHP - spawner.currentHP;
@@ -168,7 +163,7 @@ export class Level1 extends Phaser.Scene {
 
     private _onBubbleCollidesWithNeutralSpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
         const spawner: Spawner = spawnerGraphic.getData('spawner');
-        const bubble: Bubble = bubbleGraphic.getData('bubble');
+        const bubble: Bubble = this._getBubbleByGraphic(bubbleGraphic);
 
         spawner.capture({mass: bubble.mass, team: bubble.team, color: bubbleGraphic.fillColor});
         spawner.subscribeOnSpawn(() => {
@@ -176,7 +171,7 @@ export class Level1 extends Phaser.Scene {
             const bubble = this._createBubble(spawner);
             this._moveBubble(bubble, point.possibleMoves);
         })
-        bubbleGraphic.destroy(true);
+        this._destroyBubble(bubble);
         spawnerGraphic.setData('spawner', spawner);
         spawner.createSpawnInterval();
         spawner.subscribeOnDestroy(() => this._onSpawnerDestroy(<any>spawnerGraphic));
@@ -186,10 +181,14 @@ export class Level1 extends Phaser.Scene {
 
     private _onBubbleCollidesWithEnemySpawner(spawnerGraphic: Ellipse, bubbleGraphic: Ellipse): void {
         const spawner: Spawner = spawnerGraphic.getData('spawner');
-        const bubble: Bubble = bubbleGraphic.getData('bubble');
+        const bubble = this._getBubbleByGraphic(bubbleGraphic);
 
         spawner.makeDamage(bubble.mass);
-        bubbleGraphic.destroy(true);
+        this._destroyBubble(bubble);
+    }
+
+    private _getBubbleByGraphic(graphic: Ellipse | GameObjectWithBody): Bubble {
+        return this.bubblesMap[graphic.getData('id')];
     }
 
     private _findPointByPosition(position: IPosition): IMapPoint | undefined {
@@ -206,17 +205,22 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _onBubblesCollide(bubble1Graphic: GameObjectWithBody, bubble2Graphic: GameObjectWithBody): void {
-        const bubble1: Bubble = bubble1Graphic.getData('bubble');
-        const bubble2: Bubble = bubble2Graphic.getData('bubble');
+        const bubble1: Bubble = this._getBubbleByGraphic(bubble1Graphic);
+        const bubble2: Bubble = this._getBubbleByGraphic(bubble2Graphic);
         bubble1.setMass(bubble1.mass - bubble2.mass);
         bubble2.setMass(bubble2.mass - bubble1.mass);
 
         if (bubble1.mass <= 0) {
-            bubble1Graphic.destroy(true);
+            this._destroyBubble(bubble1);
         }
         if (bubble2.mass <= 0) {
-            bubble2Graphic.destroy(true);
+            this._destroyBubble(bubble2);
         }
+    }
+
+    private _destroyBubble(bubble: Bubble): void {
+        delete this.bubblesMap[bubble.id];
+        bubble.destroy();
     }
 }
 

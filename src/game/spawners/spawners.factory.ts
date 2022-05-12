@@ -13,7 +13,7 @@ export class SpawnersFactory {
     newLevel2Spawner(data: Pick<ISpawnerConstructorParams, 'x' | 'y' | 'team' | 'color'>): Spawner {
         return new Spawner({
             ...data,
-            bubbleMass: 30,
+            bubbleMass: 40,
             spawnInterval: 1000,
             maxHP: 700,
         });
