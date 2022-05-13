@@ -28,8 +28,11 @@ export class Level1 extends Phaser.Scene {
         super('level-1');
     }
 
+    preload() {
+        this.load.image('coin', 'assets/coin.png');
+    }
+
     create() {
-        this.coinsText = this.add.text(750, 10, String(this.player.coins));
         this._initMap(LEVEL_1_MAP);
         this._subscribeOnBubblesCollides();
         this._subscribeOnSpawnersCollides();
@@ -43,7 +46,7 @@ export class Level1 extends Phaser.Scene {
         setInterval(() => {
             this.player.coins += 5;
             this._redrawCoins();
-        }, 1000)
+        }, 1000);
     }
 
     private _initMap(map: IMap): void {
@@ -66,6 +69,14 @@ export class Level1 extends Phaser.Scene {
             spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
             spawner.subscribeOnClick(() => this._onSpawnerClick(spawner));
         });
+
+        this._initCoin();
+    }
+
+    private _initCoin(): void {
+        const coin = this.add.image(730, 17, 'coin');
+        coin.setDisplaySize(20, 20)
+        this.coinsText = this.add.text(750, 10, String(this.player.coins));
     }
 
     private _redrawCoins(): void {
