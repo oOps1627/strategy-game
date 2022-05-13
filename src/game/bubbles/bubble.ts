@@ -10,6 +10,7 @@ export interface IBubbleConstructorParams {
 }
 
 export class Bubble {
+    private readonly _speed = 30;
     private _mass: number;
     private _moveTo: MoveTo;
     private _gameObjectFactory: GameObjectFactory;
@@ -33,7 +34,7 @@ export class Bubble {
         this._gameObjectFactory = params.gameObjectFactory;
         this._setSize();
         this._createGraphic(params.spawner);
-        this._moveTo = new MoveTo(this.graphic, {speed: 80});
+        this._moveTo = new MoveTo(this.graphic, {speed: this._speed});
     }
 
     setMass(mass: number): void {
