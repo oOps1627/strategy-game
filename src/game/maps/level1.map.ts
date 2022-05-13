@@ -77,12 +77,6 @@ export const LEVEL_1_MAP: IMap = {
                 POSITION_D,
             ]
         },
-        {
-            team: NO_TEAM,
-            color: NO_TEAM_COLOR,
-            level: 1,
-            ...POINT_D,
-        },
     ],
     teams: ['TEAM_A', 'TEAM_B', 'TEAM_C']
 }

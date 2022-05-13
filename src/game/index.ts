@@ -10,19 +10,26 @@ import {getRandomInteger, onlyUnique} from "./helpers";
 import {IMap, IMapPoint} from "./maps/map";
 import {LEVEL_1_MAP} from "./maps/level1.map";
 import {SpawnersFactory} from "./spawners/spawners.factory";
+import {IPlayerInfo} from "./player/player";
 
 export class Level1 extends Phaser.Scene {
+    player: IPlayerInfo = {
+        coins: 0,
+        team: "TEAM_A"
+    }
     points: IMapPoint[];
     bubbleGroups = new Map<string, Group>();
     spawnerGroups = new Map<string, Group>();
     bubblesMap: { [bubbleId: string]: Bubble } = {};
     spawnersMap: { [spawnerId: string]: Spawner } = {};
+    coinsText: Phaser.GameObjects.Text;
 
     constructor() {
         super('level-1');
     }
 
     create() {
+        this.coinsText = this.add.text(750, 10, String(this.player.coins));
         this._initMap(LEVEL_1_MAP);
         this._subscribeOnBubblesCollides();
         this._subscribeOnSpawnersCollides();
@@ -32,6 +39,11 @@ export class Level1 extends Phaser.Scene {
                 spawner.subscribeOnSpawn((s) => this._onSpawnerSpawnBubble(s));
             }
         })
+
+        setInterval(() => {
+            this.player.coins += 5;
+            this._redrawCoins();
+        }, 1000)
     }
 
     private _initMap(map: IMap): void {
@@ -52,7 +64,20 @@ export class Level1 extends Phaser.Scene {
             this.spawnersMap[spawner.id] = spawner;
             this.spawnerGroups.get(spawner.team)?.add(spawner.graphic);
             spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
+            spawner.subscribeOnClick(() => this._onSpawnerClick(spawner));
         });
+    }
+
+    private _redrawCoins(): void {
+        this.coinsText.setText(String(this.player.coins));
+    }
+
+    private _onSpawnerClick(spawner: Spawner): void {
+        if (spawner.team === this.player.team && spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
+            this.player.coins = this.player.coins - <number>spawner.costForUpgrade;
+            spawner.upgrade();
+            this._redrawCoins();
+        }
     }
 
     private _createBubble(spawner: Spawner): Bubble {

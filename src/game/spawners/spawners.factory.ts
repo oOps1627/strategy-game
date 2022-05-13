@@ -1,27 +1,49 @@
 import {ISpawnerConstructorParams, Spawner} from "./spawner";
 import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
 
+interface ILevelCharacter {
+    bubbleMass: number;
+    spawnInterval:  number;
+    maxHP: number;
+    canUpgrade: boolean;
+    costForUpgrade?: number;
+}
+
+const LevelCharactersMap: {[level: number]: ILevelCharacter} = {
+    [1]: {
+        bubbleMass: 10,
+        spawnInterval: 600,
+        maxHP: 200,
+        canUpgrade: true,
+        costForUpgrade: 50,
+    },
+    [2]: {
+        bubbleMass: 15,
+        spawnInterval: 600,
+        maxHP: 300,
+        canUpgrade: true,
+        costForUpgrade: 100,
+    },
+    [3]: {
+        bubbleMass: 20,
+        spawnInterval: 500,
+        maxHP: 400,
+        canUpgrade: false,
+    }
+}
+
 export class SpawnersFactory {
-    private _levelCharactersMap = {
-        [1]: {
-            bubbleMass: 10,
-            spawnInterval: 600,
-            maxHP: 200,
-        },
-        [2]: {
-            bubbleMass: 15,
-            spawnInterval: 600,
-            maxHP: 300,
-        }
+    constructor(private gameObjectFactory: GameObjectFactory) {
     }
 
-    constructor(private gameObjectFactory: GameObjectFactory) {
+    static getLevelCharacters(level: number): ILevelCharacter {
+        return LevelCharactersMap[level];
     }
 
     newSpawner(data: Pick<ISpawnerConstructorParams, 'position' | 'team' | 'color' | 'possibleMoves' | 'level'>): Spawner {
         return new Spawner({
             ...data,
-            ...this._levelCharactersMap[data.level],
+            ...SpawnersFactory.getLevelCharacters(data.level),
             gameObjectFactory: this.gameObjectFactory
         });
     }

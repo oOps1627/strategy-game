@@ -1,6 +1,7 @@
 import Rectangle = Phaser.GameObjects.Rectangle;
 import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
 import {IPosition} from "../models";
+import {SpawnersFactory} from "./spawners.factory";
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -15,11 +16,14 @@ export interface ISpawnerConstructorParams {
     possibleMoves: IPosition[];
     level: number;
     gameObjectFactory: GameObjectFactory;
+    canUpgrade: boolean;
+    costForUpgrade?: number;
 }
 
 export class Spawner {
     private _onWithoutTeam: ((spawner: Spawner) => void) | null;
     private _onSpawn: ((spawner: Spawner) => void) | null;
+    private _onClick: ((spawner: Spawner) => void) | null;
     private _currentHP: number;
     private _spawnIntervalToClear;
     private _gameObjectFactory: GameObjectFactory;
@@ -37,6 +41,8 @@ export class Spawner {
     possibleMoves: IPosition[];
     size: number;
     level: number;
+    canUpgrade: boolean;
+    costForUpgrade: number | undefined;
 
     get currentHP(): number {
         return this._currentHP;
@@ -53,6 +59,8 @@ export class Spawner {
         this._currentHP = params.maxHP;
         this.possibleMoves = params.possibleMoves;
         this.level = params.level;
+        this.canUpgrade = params.canUpgrade;
+        this.costForUpgrade = params.costForUpgrade;
         this._gameObjectFactory = params.gameObjectFactory;
 
         this._setSize();
@@ -66,6 +74,8 @@ export class Spawner {
             fontSize: '9px',
         });
         this.graphic.setData('id', this.id);
+        this.graphic.setInteractive();
+        this.graphic.on('pointerup', () => this._onClick && this._onClick(this));
         this.updateGraphic();
     }
 
@@ -82,6 +92,10 @@ export class Spawner {
 
     subscribeWhenWillWithoutTeam(cb: (spawner: Spawner) => void): void {
         this._onWithoutTeam = cb;
+    }
+
+    subscribeOnClick(onClick: (spawner: Spawner) => void): void {
+        this._onClick = onClick;
     }
 
     subscribeOnSpawn(cb: (spawner: Spawner) => void): void {
@@ -120,7 +134,21 @@ export class Spawner {
     updateGraphic(): void {
         const alpha = (this.currentHP / this.maxHP) > 1 ? 1 : this.currentHP / this.maxHP;
         this.graphic.setFillStyle(this.color, alpha);
+        this.graphic.setSize(this.size, this.size);
         this.textGraphic.setText(` ${this.team}\n${this._currentHP} / ${this.maxHP}`);
+    }
+
+    upgrade(): void {
+        const characters = SpawnersFactory.getLevelCharacters(++this.level);
+        if (characters) {
+            this.maxHP = characters.maxHP;
+            this.spawnInterval = characters.spawnInterval;
+            this.bubbleMass = characters.bubbleMass;
+            this.canUpgrade = characters.canUpgrade;
+            this.costForUpgrade = characters.costForUpgrade;
+            this._setSize();
+            this.updateGraphic();
+        }
     }
 
     destroy(): void {
