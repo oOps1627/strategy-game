@@ -28,6 +28,13 @@ const LevelCharactersMap: {[level: number]: ILevelCharacter} = {
         bubbleMass: 20,
         spawnInterval: 500,
         maxHP: 400,
+        canUpgrade: true,
+        costForUpgrade: 500
+    },
+    [4]: {
+        bubbleMass: 50,
+        spawnInterval: 400,
+        maxHP: 800,
         canUpgrade: false,
     }
 }

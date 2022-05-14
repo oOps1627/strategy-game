@@ -2,6 +2,7 @@ import Rectangle = Phaser.GameObjects.Rectangle;
 import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
 import {IPosition} from "../models";
 import {SpawnersFactory} from "./spawners.factory";
+import Pointer = Phaser.Input.Pointer;
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -23,7 +24,7 @@ export interface ISpawnerConstructorParams {
 export class Spawner {
     private _onWithoutTeam: ((spawner: Spawner) => void) | null;
     private _onSpawn: ((spawner: Spawner) => void) | null;
-    private _onClick: ((spawner: Spawner) => void) | null;
+    private _onClick: ((spawner: Spawner, pointer: Pointer) => void) | null;
     private _currentHP: number;
     private _spawnIntervalToClear;
     private _gameObjectFactory: GameObjectFactory;
@@ -75,7 +76,7 @@ export class Spawner {
         });
         this.graphic.setData('id', this.id);
         this.graphic.setInteractive();
-        this.graphic.on('pointerup', () => this._onClick && this._onClick(this));
+        this.graphic.on('pointerdown', (pointer) => this._onClick && this._onClick(this, pointer));
         this.updateGraphic();
     }
 
@@ -94,7 +95,7 @@ export class Spawner {
         this._onWithoutTeam = cb;
     }
 
-    subscribeOnClick(onClick: (spawner: Spawner) => void): void {
+    subscribeOnClick(onClick: (spawner: Spawner, pointer: Pointer) => void): void {
         this._onClick = onClick;
     }
 

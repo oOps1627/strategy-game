@@ -1,16 +1,19 @@
 import * as Phaser from "phaser";
-import {NO_TEAM, Spawner} from "./spawners/spawner";
-import {IPosition} from "./models";
-import {Bubble} from "./bubbles/bubble";
+import { NO_TEAM, Spawner } from "./spawners/spawner";
+import { IPosition } from "./models";
+import { Bubble } from "./bubbles/bubble";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
-import {getRandomInteger, onlyUnique} from "./helpers";
-import {IMap, IMapPoint} from "./maps/map";
-import {LEVEL_1_MAP} from "./maps/level1.map";
-import {SpawnersFactory} from "./spawners/spawners.factory";
-import {IPlayerInfo} from "./player/player";
+import { getRandomInteger, onlyUnique } from "./helpers";
+import { IMap, IMapPoint } from "./maps/map";
+import { LEVEL_1_MAP } from "./maps/level1.map";
+import { SpawnersFactory } from "./spawners/spawners.factory";
+import { IPlayerInfo } from "./player/player";
+import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
+import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
+import Pointer = Phaser.Input.Pointer;
 
 export class Level1 extends Phaser.Scene {
     player: IPlayerInfo = {
@@ -23,6 +26,7 @@ export class Level1 extends Phaser.Scene {
     bubblesMap: { [bubbleId: string]: Bubble } = {};
     spawnersMap: { [spawnerId: string]: Spawner } = {};
     coinsText: Phaser.GameObjects.Text;
+    spawnerMenu: Menu | undefined;
 
     constructor() {
         super('level-1');
@@ -67,7 +71,7 @@ export class Level1 extends Phaser.Scene {
             this.spawnersMap[spawner.id] = spawner;
             this.spawnerGroups.get(spawner.team)?.add(spawner.graphic);
             spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
-            spawner.subscribeOnClick(() => this._onSpawnerClick(spawner));
+            spawner.subscribeOnClick((spawner, pointer) => this._onSpawnerClick(spawner, pointer));
         });
 
         this._initCoin();
@@ -83,12 +87,62 @@ export class Level1 extends Phaser.Scene {
         this.coinsText.setText(String(this.player.coins));
     }
 
-    private _onSpawnerClick(spawner: Spawner): void {
-        if (spawner.team === this.player.team && spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
-            this.player.coins = this.player.coins - <number>spawner.costForUpgrade;
-            spawner.upgrade();
-            this._redrawCoins();
+    private _onSpawnerClick(spawner: Spawner, pointer: Pointer): void {
+        if (spawner.team !== this.player.team) {
+            return;
         }
+
+        if (!this.spawnerMenu) {
+            this.spawnerMenu = this._createSpawnerMenu(spawner);
+        } else if (!this.spawnerMenu.isInTouching()) {
+            this.spawnerMenu.collapse();
+            this.spawnerMenu = undefined;
+        }
+    }
+
+    private _createSpawnerMenu(spawner: Spawner): Menu {
+        const rexUI: UIPlugin = this['rexUI'];
+        const scene = this;
+        const items: {name: string, type: string}[] = [];
+
+        if (spawner.canUpgrade) {
+            items.push({
+                name: `Upgrade (${spawner.costForUpgrade})`,
+                type: 'Upgrade'
+            });
+        }
+
+        const menu = rexUI.add.menu({
+            x: spawner.x + spawner.size,
+            y: spawner.y + spawner.size,
+            items: items,
+            createButtonCallback: function (item, i, options) {
+                return rexUI.add.label({
+                    background: rexUI.add.roundRectangle(0, 0, 2, 2, 0, 0x717337),
+                    text: scene.add.text(0, 0, item.name, {fontSize: '11px'}),
+                    space: {
+                        left: 5,
+                        right: 5,
+                        top: 5,
+                        bottom: 5,
+                    }
+                })
+            },
+        });
+
+        menu.on('button.click', (e, i) => {
+            if (items[i].type === 'Upgrade') {
+                if (spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
+                    this.player.coins -= <number>spawner.costForUpgrade;
+                    spawner.upgrade();
+                    this._redrawCoins();
+                    menu.collapse();
+                    this.spawnerMenu = undefined;
+                }
+            }
+        })
+
+        return menu;
     }
 
     private _createBubble(spawner: Spawner): Bubble {
@@ -290,6 +344,14 @@ export function loadGame(): void {
         width: 800,
         height: 600,
         parent: 'content',
+        plugins: {
+            scene: [{
+                key: 'rexUI',
+                plugin: UIPlugin,
+                mapping: 'rexUI'
+            },
+            ]
+        },
         physics: {
             default: 'arcade',
             arcade: {
