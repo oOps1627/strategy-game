@@ -34,7 +34,7 @@ const LevelCharactersMap: {[level: number]: ILevelCharacter} = {
     [4]: {
         bubbleMass: 50,
         spawnInterval: 400,
-        maxHP: 800,
+        maxHP: 500,
         canUpgrade: false,
     }
 }
@@ -47,7 +47,7 @@ export class SpawnersFactory {
         return LevelCharactersMap[level];
     }
 
-    newSpawner(data: Pick<ISpawnerConstructorParams, 'position' | 'team' | 'color' | 'possibleMoves' | 'level'>): Spawner {
+    newSpawner(data: Pick<ISpawnerConstructorParams, 'position' | 'showArrows' | 'team' | 'color' | 'possibleMoves' | 'level'>): Spawner {
         return new Spawner({
             ...data,
             ...SpawnersFactory.getLevelCharacters(data.level),

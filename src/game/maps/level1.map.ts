@@ -2,9 +2,9 @@ import {IPosition} from "../models";
 import {IMap, IMapPoint} from "./map";
 import {NO_TEAM, NO_TEAM_COLOR} from "../spawners/spawner";
 
-const POSITION_A: IPosition = {x: 20, y:20};
+const POSITION_A: IPosition = {x: 40, y:40};
 const POSITION_B: IPosition = {x: 400, y: 200};
-const POSITION_C: IPosition = {x: 20, y: 400};
+const POSITION_C: IPosition = {x: 40, y: 400};
 const POSITION_D: IPosition = {x: 500, y: 500};
 
 const POINT_A: IMapPoint = {

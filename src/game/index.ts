@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { NO_TEAM, Spawner } from "./spawners/spawner";
+import { IPossibleMove, NO_TEAM, Spawner } from "./spawners/spawner";
 import { IPosition } from "./models";
 import { Bubble } from "./bubbles/bubble";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
@@ -17,7 +17,7 @@ import Pointer = Phaser.Input.Pointer;
 
 export class Level1 extends Phaser.Scene {
     player: IPlayerInfo = {
-        coins: 0,
+        coins: 80,
         team: "TEAM_A"
     }
     points: IMapPoint[];
@@ -67,7 +67,7 @@ export class Level1 extends Phaser.Scene {
         this.spawnerGroups.set(NO_TEAM, this.physics.add.group().setName(NO_TEAM));
 
         map.spawnersInfo.forEach(params => {
-            const spawner = spawnerFactory.newSpawner(params);
+            const spawner = spawnerFactory.newSpawner({...params, showArrows: params.team === this.player.team});
             this.spawnersMap[spawner.id] = spawner;
             this.spawnerGroups.get(spawner.team)?.add(spawner.graphic);
             spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
@@ -153,19 +153,21 @@ export class Level1 extends Phaser.Scene {
         return bubble;
     }
 
-    private _moveBubble(bubble: Bubble, possibleMoves: IPosition[]): void {
+    private _moveBubble(bubble: Bubble, possibleMoves: IPossibleMove[]): void {
         const direction = this._getMoveDirection(possibleMoves);
 
         bubble.moveTo(direction, (bubbleToMove) => {
+            let spawner = this._findSpawnerByPosition(bubbleToMove.graphic);
             let point = <IMapPoint>this._findPointByPosition(bubbleToMove.graphic);
-            return this._getMoveDirection(point.possibleMoves, bubbleToMove.movedFrom);
+
+            return this._getMoveDirection(spawner ? spawner.possibleMoves : point.possibleMoves, bubbleToMove.movedFrom);
         });
     }
 
-    private _getMoveDirection(possibleMoves: IPosition[], movedFrom?: IPosition): IPosition {
-        let moves = possibleMoves.filter(p => !movedFrom || (p.x !== movedFrom.x || p.y !== movedFrom.y));
+    private _getMoveDirection(possibleMoves: IPossibleMove[], movedFrom?: IPossibleMove): IPosition {
+        let moves = possibleMoves.filter(p => !p.disabled && (!movedFrom || (p.x !== movedFrom.x || p.y !== movedFrom.y)));
 
-        return moves[getRandomInteger(0, moves.length - 1)];
+        return {...moves[getRandomInteger(0, moves.length - 1)]};
     }
 
     private _drawPaths(): void {
@@ -272,6 +274,10 @@ export class Level1 extends Phaser.Scene {
         return this.points.find(point => point.position.x === position.x && point.position.y === position.y);
     }
 
+    private _findSpawnerByPosition(position: IPosition): Spawner | undefined {
+        return this._getSpawners().find(s => s.x === position.x && s.y === position.y);
+    }
+
     private _getSpawners(): Spawner[] {
         return Object.values(this.spawnersMap);
     }
@@ -316,7 +322,7 @@ export class Level1 extends Phaser.Scene {
 
     private _onSpawnerSpawnBubble(spawner: Spawner): void {
         const bubble = this._createBubble(spawner);
-        this._moveBubble(bubble, spawner.possibleMoves);
+        this._moveBubble(bubble, [...spawner.possibleMoves]);
     }
 
     private _checkGameOver(): void {

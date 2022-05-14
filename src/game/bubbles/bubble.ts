@@ -10,7 +10,7 @@ export interface IBubbleConstructorParams {
 }
 
 export class Bubble {
-    private readonly _speed = 30;
+    private readonly _speed = 10;
     private _mass: number;
     private _moveTo: MoveTo;
     private _gameObjectFactory: GameObjectFactory;
