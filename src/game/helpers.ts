@@ -21,3 +21,7 @@ export function getPositionAfterMoving(startPosition: IPosition, targetPosition:
 
     return {x: startPosition.x + XOffset, y: startPosition.y + YOffset};
 }
+
+export function getAngleForRotation(startPosition: IPosition, targetPosition: IPosition): number {
+    return Math.atan2(startPosition.y - targetPosition.y, startPosition.x - targetPosition.x) * 180 / Math.PI
+}

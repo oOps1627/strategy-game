@@ -244,7 +244,12 @@ export class Level1 extends Phaser.Scene {
         const spawner: Spawner = this._getSpawnerByGraphic(spawnerGraphic);
         const bubble: Bubble = this._getBubbleByGraphic(bubbleGraphic);
 
-        spawner.capture({mass: bubble.mass, team: bubble.team, color: bubbleGraphic.fillColor});
+        spawner.capture({
+            mass: bubble.mass,
+            team: bubble.team,
+            color: bubbleGraphic.fillColor,
+            drawArrows: bubble.team === this.player.team});
+
         this._checkGameOver();
         spawner.subscribeOnSpawn((s) => this._onSpawnerSpawnBubble(s));
         this._destroyBubble(bubble);

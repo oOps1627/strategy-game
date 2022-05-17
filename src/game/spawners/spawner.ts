@@ -1,10 +1,10 @@
 import Rectangle = Phaser.GameObjects.Rectangle;
 import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
-import { IPosition } from "../models";
-import { SpawnersFactory } from "./spawners.factory";
+import {IPosition} from "../models";
+import {SpawnersFactory} from "./spawners.factory";
 import Pointer = Phaser.Input.Pointer;
 import Triangle = Phaser.GameObjects.Triangle;
-import { getPositionAfterMoving } from "../helpers";
+import {getAngleForRotation, getPositionAfterMoving} from "../helpers";
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -36,6 +36,7 @@ export class Spawner {
     private _spawnIntervalToClear;
     private _gameObjectFactory: GameObjectFactory;
     private _originSize: number;
+    private _capturingTeam: string;
 
     readonly id = String(Date.now()) + String(Math.random());
     x: number;
@@ -102,9 +103,9 @@ export class Spawner {
 
     private _createArrows(): void {
         this.possibleMoves.forEach(move => {
-            const angleDeg = Math.atan2(this.y - move.y, this.x - move.x) * 180 / Math.PI;
             const arrowCenter = getPositionAfterMoving(this, move, this.size / 1.5);
             const arrow = this._gameObjectFactory.triangle(arrowCenter.x, arrowCenter.y, 0, 12, 6, 0, 12, 12);
+            const angleDeg = getAngleForRotation(this, move);
             arrow.setAngle(angleDeg - 90);
             arrow.setFillStyle(move.disabled ? 0x000000 : 0xffffff);
             arrow.setInteractive();
@@ -121,13 +122,16 @@ export class Spawner {
                         disabled: move.x === i.x && move.y === i.y ? !i.disabled : i.disabled
                     }
                 ));
-
-                this._redrawArrows();
             });
         })
     }
 
-    private _redrawArrows(): void {
+    private _removeArrows(): void {
+        this.arrowsGraphic.forEach(i => i.destroy(true));
+        this.arrowsGraphic = [];
+    }
+
+    private _updateArrowColorAndPosition(): void {
         this.arrowsGraphic.forEach(arrowGraphic => {
             const toPosition = arrowGraphic.getData('toPosition');
             const arrowCenter = getPositionAfterMoving(this, toPosition, this.size / 1.5);
@@ -179,9 +183,14 @@ export class Spawner {
         this.updateGraphic();
     }
 
-    capture(data: { team: string, color: number, mass: number }): void {
+    capture(data: { team: string, color: number, mass: number, drawArrows: boolean }): void {
         this.team = data.team;
         this.color = data.color;
+        if (this.showArrows != data.drawArrows) {
+            this.showArrows = data.drawArrows;
+            this.showArrows ? this._createArrows() : this._removeArrows();
+        }
+
         this.updateGraphic();
     }
 
@@ -190,7 +199,7 @@ export class Spawner {
         this.graphic.setFillStyle(this.color, alpha);
         this.graphic.setScale(this.size / this._originSize);
         this.textGraphic.setText(` ${this.team}\n${this._currentHP} / ${this.maxHP}`);
-        this._redrawArrows();
+        this._updateArrowColorAndPosition();
     }
 
     upgrade(): void {
