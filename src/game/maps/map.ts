@@ -6,8 +6,10 @@ export interface IMapPoint {
     possibleMoves: IPosition[];
 }
 
+export type ISpawnerInfo = Pick<ISpawnerConstructorParams, 'color' | 'team' | 'level' | 'possibleMoves' | 'position'>;
+
 export interface IMap {
     points: IMapPoint[];
     teams: string[];
-    spawnersInfo: Pick<ISpawnerConstructorParams, 'color' | 'team' | 'level' | 'possibleMoves' | 'position'>[];
+    spawnersInfo: ISpawnerInfo[];
 }

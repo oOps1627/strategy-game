@@ -6,20 +6,20 @@ import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
-import { getRandomInteger, onlyUnique } from "./helpers";
-import { IMap, IMapPoint } from "./maps/map";
+import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers";
+import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
 import { LEVEL_1_MAP } from "./maps/level1.map";
 import { SpawnersFactory } from "./spawners/spawners.factory";
-import { IPlayerInfo } from "./player/player";
+import { Player } from "./player/player";
 import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
 import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
 import Pointer = Phaser.Input.Pointer;
 
 export class Level1 extends Phaser.Scene {
-    player: IPlayerInfo = {
-        coins: 80,
-        team: "TEAM_A"
-    }
+    player = new Player({
+        startCoins: 80,
+        team: 'TEAM_A'
+    });
     points: IMapPoint[];
     bubbleGroups = new Map<string, Group>();
     spawnerGroups = new Map<string, Group>();
@@ -48,7 +48,7 @@ export class Level1 extends Phaser.Scene {
         })
 
         setInterval(() => {
-            this.player.coins += 5;
+            this.player.addCoins(5);
             this._redrawCoins();
         }, 1000);
     }
@@ -57,8 +57,6 @@ export class Level1 extends Phaser.Scene {
         this.points = map.points;
         this._drawPaths();
 
-        const spawnerFactory = new SpawnersFactory(this.add);
-
         map.teams.forEach(team => {
             this.spawnerGroups.set(team, this.physics.add.group());
             this.bubbleGroups.set(team, this.physics.add.group());
@@ -66,15 +64,20 @@ export class Level1 extends Phaser.Scene {
 
         this.spawnerGroups.set(NO_TEAM, this.physics.add.group().setName(NO_TEAM));
 
-        map.spawnersInfo.forEach(params => {
+        this._initSpawners(map.spawnersInfo);
+        this._initCoin();
+    }
+
+    private _initSpawners(spawnersInfo: ISpawnerInfo[]): void {
+        const spawnerFactory = new SpawnersFactory(this.add);
+
+        spawnersInfo.forEach(params => {
             const spawner = spawnerFactory.newSpawner({...params, showArrows: params.team === this.player.team});
             this.spawnersMap[spawner.id] = spawner;
             this.spawnerGroups.get(spawner.team)?.add(spawner.graphic);
             spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
             spawner.subscribeOnClick((spawner, pointer) => this._onSpawnerClick(spawner, pointer));
         });
-
-        this._initCoin();
     }
 
     private _initCoin(): void {
@@ -103,7 +106,7 @@ export class Level1 extends Phaser.Scene {
     private _createSpawnerMenu(spawner: Spawner): Menu {
         const rexUI: UIPlugin = this['rexUI'];
         const scene = this;
-        const items: {name: string, type: string}[] = [];
+        const items: { name: string, type: string }[] = [];
 
         if (spawner.canUpgrade) {
             items.push({
@@ -133,7 +136,7 @@ export class Level1 extends Phaser.Scene {
         menu.on('button.click', (e, i) => {
             if (items[i].type === 'Upgrade') {
                 if (spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
-                    this.player.coins -= <number>spawner.costForUpgrade;
+                    this.player.removeCoins(<number>spawner.costForUpgrade);
                     spawner.upgrade();
                     this._redrawCoins();
                     menu.collapse();
@@ -145,18 +148,16 @@ export class Level1 extends Phaser.Scene {
         return menu;
     }
 
-    private _createBubble(spawner: Spawner): Bubble {
-        const bubble = new Bubble({spawner, gameObjectFactory: this.add});
+    private _createBubble(spawner: Spawner, position: IPosition): Bubble {
+        const bubble = new Bubble({spawner, gameObjectFactory: this.add, startPosition: position});
         this.bubbleGroups.get(spawner.team)?.add(bubble.graphic);
         this.bubblesMap[bubble.id] = bubble;
 
         return bubble;
     }
 
-    private _moveBubble(bubble: Bubble, possibleMoves: IPossibleMove[]): void {
-        const direction = this._getMoveDirection(possibleMoves);
-
-        bubble.moveTo(direction, (bubbleToMove) => {
+    private _moveBubble(bubble: Bubble, moveDirection: IPosition): void {
+        bubble.moveTo(moveDirection, (bubbleToMove) => {
             let spawner = this._findSpawnerByPosition(bubbleToMove.graphic);
             let point = <IMapPoint>this._findPointByPosition(bubbleToMove.graphic);
 
@@ -248,7 +249,8 @@ export class Level1 extends Phaser.Scene {
             mass: bubble.mass,
             team: bubble.team,
             color: bubbleGraphic.fillColor,
-            drawArrows: bubble.team === this.player.team});
+            drawArrows: bubble.team === this.player.team
+        });
 
         this._checkGameOver();
         spawner.subscribeOnSpawn((s) => this._onSpawnerSpawnBubble(s));
@@ -326,8 +328,9 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _onSpawnerSpawnBubble(spawner: Spawner): void {
-        const bubble = this._createBubble(spawner);
-        this._moveBubble(bubble, [...spawner.possibleMoves]);
+        const moveDirection = this._getMoveDirection([...spawner.possibleMoves]);
+        const bubble = this._createBubble(spawner, getPositionAfterMoving(spawner, moveDirection, spawner.size));
+        this._moveBubble(bubble, moveDirection);
     }
 
     private _checkGameOver(): void {

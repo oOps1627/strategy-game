@@ -7,6 +7,7 @@ import MoveTo from 'phaser3-rex-plugins/plugins/moveto.js';
 export interface IBubbleConstructorParams {
     spawner: Spawner;
     gameObjectFactory: GameObjectFactory;
+    startPosition: IPosition;
 }
 
 export class Bubble {
@@ -33,7 +34,7 @@ export class Bubble {
         this.movedFrom = {x: params.spawner.x, y: params.spawner.y};
         this._gameObjectFactory = params.gameObjectFactory;
         this._setSize();
-        this._createGraphic(params.spawner);
+        this._createGraphic(params.startPosition);
         this._moveTo = new MoveTo(this.graphic, {speed: this._speed});
     }
 
@@ -59,8 +60,8 @@ export class Bubble {
         });
     }
 
-    private _createGraphic(spawner: Spawner): void {
-        this.graphic = this._gameObjectFactory.ellipse(spawner.x, spawner.y, this.size, this.size);
+    private _createGraphic(position: IPosition): void {
+        this.graphic = this._gameObjectFactory.ellipse(position.x, position.y, this.size, this.size);
         this.graphic.setData('id', this.id);
         this.updateGraphic(this.size);
     }

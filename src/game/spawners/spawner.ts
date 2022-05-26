@@ -114,6 +114,7 @@ export class Spawner {
             this.arrowsGraphic.push(arrow);
             arrow.on('pointerdown', () => {
                 const disable = !this.possibleMoves.find(i => i.x === move.x && i.y === move.y)?.disabled;
+
                 if (disable && this.possibleMoves.filter(i => !i.disabled).length === 1) {
                     return;
                 }
@@ -122,6 +123,8 @@ export class Spawner {
                         disabled: move.x === i.x && move.y === i.y ? !i.disabled : i.disabled
                     }
                 ));
+
+                this._updateArrowColorAndPosition();
             });
         })
     }
@@ -206,6 +209,7 @@ export class Spawner {
         const characters = SpawnersFactory.getLevelCharacters(++this.level);
         if (characters) {
             this.maxHP = characters.maxHP;
+            this.restoreHP(this.maxHP);
             this.spawnInterval = characters.spawnInterval;
             this.bubbleMass = characters.bubbleMass;
             this.canUpgrade = characters.canUpgrade;
