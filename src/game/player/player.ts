@@ -14,4 +14,8 @@ export class Player {
     removeCoins(count: number): void {
         this.coins -= count;
     }
+
+    isSameTeam(team: string): boolean {
+        return this.team === team;
+    }
 }

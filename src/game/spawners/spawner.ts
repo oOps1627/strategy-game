@@ -4,7 +4,7 @@ import {IPosition} from "../models";
 import {SpawnersFactory} from "./spawners.factory";
 import Pointer = Phaser.Input.Pointer;
 import Triangle = Phaser.GameObjects.Triangle;
-import {getAngleForRotation, getPositionAfterMoving} from "../helpers";
+import {getAngleForRotation, getPositionAfterMoving, isSamePosition} from "../helpers";
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -112,21 +112,23 @@ export class Spawner {
             arrow.setData('toPosition', move);
             arrow.setDepth(1);
             this.arrowsGraphic.push(arrow);
-            arrow.on('pointerdown', () => {
-                const disable = !this.possibleMoves.find(i => i.x === move.x && i.y === move.y)?.disabled;
-
-                if (disable && this.possibleMoves.filter(i => !i.disabled).length === 1) {
-                    return;
-                }
-                this.possibleMoves = this.possibleMoves.map(i => ({
-                        ...i,
-                        disabled: move.x === i.x && move.y === i.y ? !i.disabled : i.disabled
-                    }
-                ));
-
-                this._updateArrowColorAndPosition();
-            });
+            arrow.on('pointerdown', () => this._onArrowToggle(move));
         })
+    }
+
+    private _onArrowToggle(direction: IPosition): void {
+        const isActionForDisable = !this.possibleMoves.find(i => isSamePosition(i, direction))?.disabled;
+        const isOnlyOneEnabledArrow = this.possibleMoves.filter(i => !i.disabled).length === 1;
+
+        if (isActionForDisable && isOnlyOneEnabledArrow)
+            return;
+
+        this.possibleMoves = this.possibleMoves.map(possibleMove => ({
+                ...possibleMove,
+                disabled: isSamePosition(direction, possibleMove) ? !possibleMove.disabled : possibleMove.disabled
+            }
+        ));
+        this._updateArrowColorAndPosition();
     }
 
     private _removeArrows(): void {
@@ -180,7 +182,7 @@ export class Spawner {
     makeWithoutTeam(): void {
         this.team = NO_TEAM;
         this.color = NO_TEAM_COLOR;
-        this.restoreHP(this.maxHP);
+        this._currentHP = this.maxHP;
         this._onSpawn = null;
         clearInterval(this._spawnIntervalToClear);
         this.updateGraphic();
@@ -189,6 +191,9 @@ export class Spawner {
     capture(data: { team: string, color: number, mass: number, drawArrows: boolean }): void {
         this.team = data.team;
         this.color = data.color;
+        this._currentHP = this.maxHP;
+        this.possibleMoves = this.possibleMoves.map(i => ({...i, disabled: false}));
+
         if (this.showArrows != data.drawArrows) {
             this.showArrows = data.drawArrows;
             this.showArrows ? this._createArrows() : this._removeArrows();
@@ -202,6 +207,7 @@ export class Spawner {
         this.graphic.setFillStyle(this.color, alpha);
         this.graphic.setScale(this.size / this._originSize);
         this.textGraphic.setText(` ${this.team}\n${this._currentHP} / ${this.maxHP}`);
+        this.textGraphic.setPosition(this.x + this.size / 2, this.y - this.size / 2);
         this._updateArrowColorAndPosition();
     }
 

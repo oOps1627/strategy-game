@@ -1,19 +1,20 @@
 import * as Phaser from "phaser";
-import { IPossibleMove, NO_TEAM, Spawner } from "./spawners/spawner";
-import { IPosition } from "./models";
-import { Bubble } from "./bubbles/bubble";
+import {IPossibleMove, NO_TEAM, Spawner} from "./spawners/spawner";
+import {IPosition} from "./models";
+import {Bubble} from "./bubbles/bubble";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
-import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers";
-import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
-import { LEVEL_1_MAP } from "./maps/level1.map";
-import { SpawnersFactory } from "./spawners/spawners.factory";
-import { Player } from "./player/player";
+import {getPositionAfterMoving, getRandomInteger, onlyUnique} from "./helpers";
+import {IMap, IMapPoint, ISpawnerInfo} from "./maps/map";
+import {LEVEL_1_MAP} from "./maps/level1.map";
+import {SpawnersFactory} from "./spawners/spawners.factory";
+import {Player} from "./player/player";
 import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
 import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
 import Pointer = Phaser.Input.Pointer;
+import {ISpawnerMenuItem, SpawnerMenu} from "./spawners/spawner-menu";
 
 export class Level1 extends Phaser.Scene {
     player = new Player({
@@ -82,7 +83,7 @@ export class Level1 extends Phaser.Scene {
 
     private _initCoin(): void {
         const coin = this.add.image(730, 17, 'coin');
-        coin.setDisplaySize(20, 20)
+        coin.setDisplaySize(20, 20);
         this.coinsText = this.add.text(750, 10, String(this.player.coins));
     }
 
@@ -91,7 +92,7 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _onSpawnerClick(spawner: Spawner, pointer: Pointer): void {
-        if (spawner.team !== this.player.team) {
+        if (!this.player.isSameTeam(spawner.team)) {
             return;
         }
 
@@ -104,48 +105,23 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _createSpawnerMenu(spawner: Spawner): Menu {
-        const rexUI: UIPlugin = this['rexUI'];
-        const scene = this;
-        const items: { name: string, type: string }[] = [];
-
-        if (spawner.canUpgrade) {
-            items.push({
+        const menuItems: ISpawnerMenuItem[] = [
+            {
                 name: `Upgrade (${spawner.costForUpgrade})`,
-                type: 'Upgrade'
-            });
-        }
-
-        const menu = rexUI.add.menu({
-            x: spawner.x + spawner.size,
-            y: spawner.y + spawner.size,
-            items: items,
-            createButtonCallback: function (item, i, options) {
-                return rexUI.add.label({
-                    background: rexUI.add.roundRectangle(0, 0, 2, 2, 0, 0x717337),
-                    text: scene.add.text(0, 0, item.name, {fontSize: '11px'}),
-                    space: {
-                        left: 5,
-                        right: 5,
-                        top: 5,
-                        bottom: 5,
+                hidden: !spawner.canUpgrade,
+                handler: (spawner, menu) => {
+                    if (spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
+                        this.player.removeCoins(<number>spawner.costForUpgrade);
+                        spawner.upgrade();
+                        this._redrawCoins();
+                        menu.collapse();
+                        this.spawnerMenu = undefined;
                     }
-                })
-            },
-        });
-
-        menu.on('button.click', (e, i) => {
-            if (items[i].type === 'Upgrade') {
-                if (spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
-                    this.player.removeCoins(<number>spawner.costForUpgrade);
-                    spawner.upgrade();
-                    this._redrawCoins();
-                    menu.collapse();
-                    this.spawnerMenu = undefined;
                 }
             }
-        })
+        ];
 
-        return menu;
+        return SpawnerMenu.createSpawnerMenu(spawner, this, menuItems);
     }
 
     private _createBubble(spawner: Spawner, position: IPosition): Bubble {

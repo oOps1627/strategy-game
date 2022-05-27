@@ -10,6 +10,10 @@ export function onlyUnique(value, index, self) {
     return self.indexOf(value) === index;
 }
 
+export function isSamePosition(position1: IPosition, position2: IPosition): boolean {
+    return position1.x === position2.x && position1.y === position2.y;
+}
+
 export function getPositionAfterMoving(startPosition: IPosition, targetPosition: IPosition, steps: number): IPosition {
     const distance = Math.sqrt(Math.pow(startPosition.x - targetPosition.x, 2) + Math.pow(startPosition.y - targetPosition.y, 2));
     const stepsInPercentFromDistance = steps * 100 / distance;
