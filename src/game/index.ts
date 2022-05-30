@@ -79,9 +79,16 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _setCamera(): void {
-        this.scale.lockOrientation('landscape');
         const cam = this.cameras.main;
         this._setCameraBounds();
+
+        this.input.on('wheel', (e) => {
+            const newZoom = this.cameras.main.zoomX - e.deltaY / 500;
+            if (newZoom > 0.8 && newZoom < 2) {
+                this.cameras.main.zoomTo(newZoom, 50);
+            }
+
+        })
 
         this.input.on('pointermove', function (p) {
             if (!p.isDown) return;
