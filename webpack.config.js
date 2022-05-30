@@ -24,11 +24,15 @@ module.exports = {
                 loader: 'ts-loader',
                 exclude: /node_modules/
             },
+            {
+                test: /\.css$/i,
+                use: ["style-loader", "css-loader"],
+            },
         ]
     },
     plugins: [
         // new webpack.optimize.UglifyJsPlugin(),
-        new ExtractTextPlugin('styles.css'),
+      //  new ExtractTextPlugin('./src/styles.css'),
         new HtmlWebpackPlugin({
             template: 'src/index.html'
         })
