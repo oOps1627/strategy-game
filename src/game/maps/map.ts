@@ -12,4 +12,6 @@ export interface IMap {
     points: IMapPoint[];
     teams: string[];
     spawnersInfo: ISpawnerInfo[];
+    width: number;
+    height: number;
 }

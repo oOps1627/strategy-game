@@ -42,6 +42,8 @@ const POINT_D: IMapPoint = {
 }
 
 export const LEVEL_1_MAP: IMap = {
+    width: 600,
+    height: 600,
     points: [
         POINT_A,
         POINT_B,

@@ -1,20 +1,20 @@
 import * as Phaser from "phaser";
-import { IPossibleMove, NO_TEAM, Spawner } from "./spawners/spawner";
-import { IPosition } from "./models";
-import { Bubble } from "./bubbles/bubble";
+import {IPossibleMove, NO_TEAM, Spawner} from "./spawners/spawner";
+import {IPosition} from "./models";
+import {Bubble} from "./bubbles/bubble";
+import {getPositionAfterMoving, getRandomInteger, onlyUnique} from "./helpers";
+import {IMap, IMapPoint, ISpawnerInfo} from "./maps/map";
+import {SpawnersFactory} from "./spawners/spawners.factory";
+import {Player} from "./player/player";
+import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
+import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
+import {ISpawnerMenuItem, SpawnerMenu} from "./spawners/spawner-menu";
+import {GAME_STATE} from "./game-state";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
-import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers";
-import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
-import { LEVEL_1_MAP } from "./maps/level1.map";
-import { SpawnersFactory } from "./spawners/spawners.factory";
-import { Player } from "./player/player";
-import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
-import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
 import Pointer = Phaser.Input.Pointer;
-import { ISpawnerMenuItem, SpawnerMenu } from "./spawners/spawner-menu";
 
 export class Level1 extends Phaser.Scene {
     player = new Player({
@@ -27,7 +27,9 @@ export class Level1 extends Phaser.Scene {
     bubblesMap: { [bubbleId: string]: Bubble } = {};
     spawnersMap: { [spawnerId: string]: Spawner } = {};
     coinsText: Phaser.GameObjects.Text;
+    coinIcon: Phaser.GameObjects.Image;
     spawnerMenu: Menu | undefined;
+    map: IMap;
 
     constructor() {
         super('level-1');
@@ -38,7 +40,7 @@ export class Level1 extends Phaser.Scene {
     }
 
     create() {
-        this._initMap(LEVEL_1_MAP);
+        this._initMap();
         this._subscribeOnBubblesCollides();
         this._subscribeOnSpawnersCollides();
 
@@ -53,38 +55,46 @@ export class Level1 extends Phaser.Scene {
             this._redrawCoins();
         }, 1000);
 
+        window.addEventListener('resize', () => {
+            this._setCameraBounds();
+            this._setCoinBlockPosition();
+        });
     }
 
-    private _initMap(map: IMap): void {
-        this.points = map.points;
+    private _initMap(): void {
+        this.map = <IMap>GAME_STATE.currentMap;
+        this.points = this.map.points;
         this._drawPaths();
 
-        map.teams.forEach(team => {
+        this.map.teams.forEach(team => {
             this.spawnerGroups.set(team, this.physics.add.group());
             this.bubbleGroups.set(team, this.physics.add.group());
         });
 
         this.spawnerGroups.set(NO_TEAM, this.physics.add.group().setName(NO_TEAM));
 
-        this._initSpawners(map.spawnersInfo);
-        this._initCoin();
+        this._initSpawners(this.map.spawnersInfo);
         this._setCamera();
+        this._initCoin();
     }
 
     private _setCamera(): void {
+        this.scale.lockOrientation('landscape');
         const cam = this.cameras.main;
-        const documentEl = document.documentElement;
+        this._setCameraBounds();
 
-        const xBound = documentEl.scrollWidth - documentEl.clientWidth + 800;
-        const yBound = documentEl.scrollHeight - documentEl.clientHeight + 600;
-
-        cam.setBounds(0, 0, xBound, yBound);
-        this.input.on("pointermove", function (p) {
+        this.input.on('pointermove', function (p) {
             if (!p.isDown) return;
-
             cam.scrollX -= (p.x - p.prevPosition.x) / cam.zoom;
             cam.scrollY -= (p.y - p.prevPosition.y) / cam.zoom;
         });
+    }
+
+    private _setCameraBounds(): void {
+        const documentEl = document.documentElement;
+        const xBound = documentEl.scrollWidth - documentEl.clientWidth + this.map.width;
+        const yBound = documentEl.scrollHeight - documentEl.clientHeight + this.map.height;
+        this.cameras.main.setBounds(0, 0, xBound, yBound);
     }
 
     private _initSpawners(spawnersInfo: ISpawnerInfo[]): void {
@@ -100,8 +110,14 @@ export class Level1 extends Phaser.Scene {
     }
 
     private _initCoin(): void {
-        const coin = this.add.image(730, 17, 'coin');
-        this.coinsText = this.add.text(750, 10, String(this.player.coins));
+        this.coinIcon = this.add.image(0, 0, 'coin').setScrollFactor(0);
+        this.coinsText = this.add.text(0, 0, String(this.player.coins)).setScrollFactor(0);
+        this._setCoinBlockPosition();
+    }
+
+    private _setCoinBlockPosition(): void {
+        this.coinIcon.setPosition(document.documentElement.clientWidth - 60, 17);
+        this.coinsText.setPosition(document.documentElement.clientWidth - 40, 10);
     }
 
     private _redrawCoins(): void {
@@ -344,14 +360,14 @@ export class Level1 extends Phaser.Scene {
     }
 }
 
-export function loadGame(): void {
-    screen.orientation.lock('landscape');
+export function loadGame(map: IMap): void {
+    GAME_STATE.currentMap = map;
 
     new Phaser.Game({
         type: Phaser.AUTO,
         backgroundColor: '#125555',
-        width: 800,
-        height: 600,
+        width: map.width,
+        height: map.height,
         parent: 'content',
         plugins: {
             scene: [{
