@@ -1,20 +1,22 @@
 import * as Phaser from "phaser";
-import {IPossibleMove, NO_TEAM, Spawner} from "./spawners/spawner";
-import {IPosition} from "./models";
-import {Bubble} from "./bubbles/bubble";
-import {getPositionAfterMoving, getRandomInteger, onlyUnique} from "./helpers";
-import {IMap, IMapPoint, ISpawnerInfo} from "./maps/map";
-import {SpawnersFactory} from "./spawners/spawners.factory";
-import {Player} from "./player/player";
+import { IPossibleMove, NO_TEAM, Spawner } from "./spawners/spawner";
+import { IPosition } from "./models";
+import { Bubble } from "./bubbles/bubble";
+import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers";
+import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
+import { SpawnersFactory } from "./spawners/spawners.factory";
+import { Player } from "./player/player";
 import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
 import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
-import {ISpawnerMenuItem, SpawnerMenu} from "./spawners/spawner-menu";
-import {GAME_STATE} from "./game-state";
+import { ISpawnerMenuItem, SpawnerMenu } from "./spawners/spawner-menu";
+import { GAME_STATE } from "./game-state";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
 import Pointer = Phaser.Input.Pointer;
+import GesturesPlugin from "phaser3-rex-plugins/plugins/gestures-plugin";
+import Pinch from "phaser3-rex-plugins/plugins/input/gestures/pinch/Pinch";
 
 export class Level1 extends Phaser.Scene {
     player = new Player({
@@ -83,12 +85,19 @@ export class Level1 extends Phaser.Scene {
         this._setCameraBounds();
 
         this.input.on('wheel', (e) => {
-            const newZoom = this.cameras.main.zoomX - e.deltaY / 500;
+            const newZoom = this.cameras.main.zoomX - e.deltaY / 200;
             if (newZoom > 0.8 && newZoom < 2) {
                 this.cameras.main.zoomTo(newZoom, 50);
             }
-
         })
+
+        const pinch = new Pinch(this);
+        pinch.on('pinch', function (dragScale) {
+            const newZoom = cam.zoom * dragScale.scaleFactor;
+            if (newZoom > 0.8 && newZoom < 2) {
+                cam.zoomTo(newZoom, 50);
+            }
+        }, this);
 
         this.input.on('pointermove', function (p) {
             if (!p.isDown) return;
@@ -377,11 +386,17 @@ export function loadGame(map: IMap): void {
         height: map.height,
         parent: 'content',
         plugins: {
-            scene: [{
-                key: 'rexUI',
-                plugin: UIPlugin,
-                mapping: 'rexUI'
-            },
+            scene: [
+                {
+                    key: 'rexUI',
+                    plugin: UIPlugin,
+                    mapping: 'rexUI'
+                },
+                {
+                    key: 'rexGestures',
+                    plugin: GesturesPlugin,
+                    mapping: 'rexGestures'
+                }
             ]
         },
         physics: {
