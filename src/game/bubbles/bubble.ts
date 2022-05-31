@@ -3,6 +3,7 @@ import Ellipse = Phaser.GameObjects.Ellipse;
 import GameObjectFactory = Phaser.GameObjects.GameObjectFactory;
 import {IPosition} from "../models";
 import MoveTo from 'phaser3-rex-plugins/plugins/moveto.js';
+import * as Phaser from "phaser";
 
 export interface IBubbleConstructorParams {
     spawner: Spawner;

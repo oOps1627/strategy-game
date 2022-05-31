@@ -9,6 +9,8 @@ export interface ISpawnerMenuItem {
     hidden?: boolean;
 }
 
+const MENU_BG = 0xc1c1c1;
+
 export class SpawnerMenu {
     static createSpawnerMenu(spawner: Spawner, scene: Scene, menuItems: ISpawnerMenuItem[]): Menu {
         const rexUI: UIPlugin = scene['rexUI'];
@@ -19,8 +21,8 @@ export class SpawnerMenu {
             items: menuItems.filter(i => !i.hidden),
             createButtonCallback: function (item, i, options) {
                 return rexUI.add.label({
-                    background: rexUI.add.roundRectangle(0, 0, 2, 2, 0, 0x717337),
-                    text: scene.add.text(0, 0, item.name, {fontSize: '11px'}),
+                    background: rexUI.add.roundRectangle(0, 0, 2, 2, 0, MENU_BG),
+                    text: scene.add.text(0, 0, item.name, {fontSize: '11px', color: '#0c0c0c'}),
                     space: {
                         left: 5,
                         right: 5,

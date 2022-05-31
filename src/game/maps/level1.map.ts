@@ -1,6 +1,7 @@
 import {IPosition} from "../models";
 import {IMap, IMapPoint} from "./map";
 import {NO_TEAM, NO_TEAM_COLOR} from "../spawners/spawner";
+import {COLOR_PALETTE} from "../color-palette";
 
 const POSITION_A: IPosition = {x: 40, y:40};
 const POSITION_B: IPosition = {x: 400, y: 200};
@@ -42,7 +43,7 @@ const POINT_D: IMapPoint = {
 }
 
 export const LEVEL_1_MAP: IMap = {
-    width: 700,
+    width: 750,
     height: 600,
     points: [
         POINT_A,
@@ -53,19 +54,19 @@ export const LEVEL_1_MAP: IMap = {
     spawnersInfo: [
         {
             team: 'TEAM_A',
-            color: 0x686534,
+            color: COLOR_PALETTE.RED,
             level: 1,
             ...POINT_A,
         },
         {
             team: 'TEAM_B',
-            color: 0x982210,
+            color: COLOR_PALETTE.GREEN,
             level: 2,
             ...POINT_B,
         },
         {
             team: 'TEAM_C',
-            color: 0x461823,
+            color: COLOR_PALETTE.BLUE,
             level: 1,
             ...POINT_C,
         },

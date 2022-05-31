@@ -17,6 +17,7 @@ import Rectangle = Phaser.GameObjects.Rectangle;
 import Pointer = Phaser.Input.Pointer;
 import GesturesPlugin from "phaser3-rex-plugins/plugins/gestures-plugin";
 import Pinch from "phaser3-rex-plugins/plugins/input/gestures/pinch/Pinch";
+import {COLOR_PALETTE} from "./color-palette";
 
 export class Level1 extends Phaser.Scene {
     player = new Player({
@@ -83,19 +84,30 @@ export class Level1 extends Phaser.Scene {
     private _setCamera(): void {
         const cam = this.cameras.main;
         this._setCameraBounds();
+        let zooming = false;
 
         this.input.on('wheel', (e) => {
+            if (zooming)
+                return;
+
             const newZoom = this.cameras.main.zoomX - e.deltaY / 200;
             if (newZoom > 0.8 && newZoom < 2) {
+                zooming = true;
                 this.cameras.main.zoomTo(newZoom, 50);
+                setTimeout(() => zooming = false, 50);
             }
         })
 
         const pinch = new Pinch(this);
         pinch.on('pinch', function (dragScale) {
+            if (zooming)
+                return;
+
             const newZoom = cam.zoom * dragScale.scaleFactor;
             if (newZoom > 0.8 && newZoom < 2) {
+                zooming = true;
                 cam.zoomTo(newZoom, 50);
+                setTimeout(() => zooming = false, 50);
             }
         }, this);
 
@@ -156,7 +168,7 @@ export class Level1 extends Phaser.Scene {
     private _createSpawnerMenu(spawner: Spawner): Menu {
         const menuItems: ISpawnerMenuItem[] = [
             {
-                name: `Upgrade (${spawner.costForUpgrade})`,
+                name: `Вдосконалити (${spawner.costForUpgrade})`,
                 hidden: !spawner.canUpgrade,
                 handler: (spawner, menu) => {
                     if (spawner.canUpgrade && this.player.coins >= <number>spawner.costForUpgrade) {
@@ -198,7 +210,7 @@ export class Level1 extends Phaser.Scene {
 
     private _drawPaths(): void {
         const graphics = this.add.graphics({
-            lineStyle: {width: 6, color: 0xfff888},
+            lineStyle: {width: 6, color: COLOR_PALETTE.ROAD},
         });
 
         graphics.setAlpha(0.1);
@@ -361,8 +373,8 @@ export class Level1 extends Phaser.Scene {
     private _checkGameOver(): void {
         const teams = this._getSpawners().map(i => i.team).filter(onlyUnique).filter(team => team !== NO_TEAM);
         if (teams.length === 1) {
-            alert(`${teams[0]} Win`);
-
+            let winner = teams[0];
+            alert(winner === this.player.team ? 'Ви виграли' : 'Ви програли');
             setTimeout(() => this.destroy())
         }
     }
@@ -381,7 +393,7 @@ export function loadGame(map: IMap): void {
 
     new Phaser.Game({
         type: Phaser.AUTO,
-        backgroundColor: '#125555',
+        backgroundColor: COLOR_PALETTE.BACKGROUND,
         width: map.width,
         height: map.height,
         parent: 'content',

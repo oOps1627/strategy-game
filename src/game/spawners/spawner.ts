@@ -5,6 +5,7 @@ import {SpawnersFactory} from "./spawners.factory";
 import Pointer = Phaser.Input.Pointer;
 import Triangle = Phaser.GameObjects.Triangle;
 import {getAngleForRotation, getPositionAfterMoving, isSamePosition} from "../helpers";
+import {COLOR_PALETTE} from "../color-palette";
 
 export const NO_TEAM = '__NO_TEAM';
 export const NO_TEAM_COLOR = 0x666666;
@@ -84,7 +85,7 @@ export class Spawner {
     private _createGraphic(): void {
         this._originSize = this.size;
         this.graphic = this._gameObjectFactory.rectangle(this.x, this.y, this.size, this.size);
-        this.textGraphic = this._gameObjectFactory.text(this.x + this.size / 2, this.y - this.size / 2, '', {
+        this.textGraphic = this._gameObjectFactory.text(0, 0, '', {
             fontSize: '9px',
         });
         this.graphic.setData('id', this.id);
@@ -98,7 +99,7 @@ export class Spawner {
     }
 
     private _setSize(): void {
-        this.size = this.maxHP / 10;
+        this.size = 40;
     }
 
     private _createArrows(): void {
@@ -107,7 +108,6 @@ export class Spawner {
             const arrow = this._gameObjectFactory.triangle(arrowCenter.x, arrowCenter.y, 0, 12, 6, 0, 12, 12);
             const angleDeg = getAngleForRotation(this, move);
             arrow.setAngle(angleDeg - 90);
-            arrow.setFillStyle(move.disabled ? 0x000000 : 0xffffff);
             arrow.setInteractive();
             arrow.setData('toPosition', move);
             arrow.setDepth(1);
@@ -128,7 +128,7 @@ export class Spawner {
                 disabled: isSamePosition(direction, possibleMove) ? !possibleMove.disabled : possibleMove.disabled
             }
         ));
-        this._updateArrowColorAndPosition();
+        this._updateArrowsGraphic();
     }
 
     private _removeArrows(): void {
@@ -136,13 +136,14 @@ export class Spawner {
         this.arrowsGraphic = [];
     }
 
-    private _updateArrowColorAndPosition(): void {
+    private _updateArrowsGraphic(): void {
         this.arrowsGraphic.forEach(arrowGraphic => {
             const toPosition = arrowGraphic.getData('toPosition');
+            const isDisabled = this.possibleMoves.find(p => p.x === toPosition.x && p.y === toPosition.y)?.disabled;
             const arrowCenter = getPositionAfterMoving(this, toPosition, this.size / 1.5);
             arrowGraphic.setPosition(arrowCenter.x, arrowCenter.y)
-            const isDisabled = this.possibleMoves.find(p => p.x === toPosition.x && p.y === toPosition.y)?.disabled;
-            arrowGraphic.setFillStyle(isDisabled ? 0x000000 : 0xffffff);
+            arrowGraphic.setFillStyle(isDisabled ? COLOR_PALETTE.ROAD :  this.color);
+            arrowGraphic.setStrokeStyle(1, 0x000000);
         })
     }
 
@@ -205,10 +206,11 @@ export class Spawner {
     updateGraphic(): void {
         const alpha = (this.currentHP / this.maxHP) > 1 ? 1 : this.currentHP / this.maxHP;
         this.graphic.setFillStyle(this.color, alpha);
+        this.graphic.setStrokeStyle(1,0x131313);
         this.graphic.setScale(this.size / this._originSize);
-        this.textGraphic.setText(` ${this.team}\n${this._currentHP} / ${this.maxHP}`);
-        this.textGraphic.setPosition(this.x + this.size / 2, this.y - this.size / 2);
-        this._updateArrowColorAndPosition();
+        this.textGraphic.setText(`${Math.round(this._currentHP / this.maxHP * 100)}%\nlvl ${this.level}`);
+        this.textGraphic.setPosition(this.x - 12, this.y - 10);
+        this._updateArrowsGraphic();
     }
 
     upgrade(): void {
