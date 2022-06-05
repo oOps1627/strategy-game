@@ -90,6 +90,7 @@ export class Spawner {
             fontSize: '9px',
         });
         this.graphic.setData('id', this.id);
+        this.graphic.setDepth(0);
         this.graphic.setInteractive();
         this.graphic.on('pointerdown', (pointer) => this._click$.next(pointer));
         if (this.showArrows) {

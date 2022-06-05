@@ -6,20 +6,18 @@ import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers"
 import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
 import { SpawnersFactory } from "./spawners/spawners.factory";
 import { Player } from "./player/player";
-import UIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
 import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
 import { ISpawnerMenuItem, SpawnerMenu } from "./spawners/spawner-menu";
 import { GAME_STATE } from "./game-state";
+import Pinch from "phaser3-rex-plugins/plugins/input/gestures/pinch/Pinch";
+import { COLOR_PALETTE } from "./color-palette";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
 import Pointer = Phaser.Input.Pointer;
-import GesturesPlugin from "phaser3-rex-plugins/plugins/gestures-plugin";
-import Pinch from "phaser3-rex-plugins/plugins/input/gestures/pinch/Pinch";
-import {COLOR_PALETTE} from "./color-palette";
 
-export class Level1 extends Phaser.Scene {
+export class MainScene extends Phaser.Scene {
     player = new Player({
         startCoins: 80,
         team: 'TEAM_A'
@@ -388,36 +386,4 @@ export class Level1 extends Phaser.Scene {
     }
 }
 
-export function loadGame(map: IMap): void {
-    GAME_STATE.currentMap = map;
-
-    new Phaser.Game({
-        type: Phaser.AUTO,
-        backgroundColor: COLOR_PALETTE.BACKGROUND,
-        width: map.width,
-        height: map.height,
-        parent: 'content',
-        plugins: {
-            scene: [
-                {
-                    key: 'rexUI',
-                    plugin: UIPlugin,
-                    mapping: 'rexUI'
-                },
-                {
-                    key: 'rexGestures',
-                    plugin: GesturesPlugin,
-                    mapping: 'rexGestures'
-                }
-            ]
-        },
-        physics: {
-            default: 'arcade',
-            arcade: {
-                gravity: {y: 0, x: 0}
-            }
-        },
-        scene: Level1
-    });
-}
 
