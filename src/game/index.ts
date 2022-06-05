@@ -132,8 +132,8 @@ export class Level1 extends Phaser.Scene {
             const spawner = spawnerFactory.newSpawner({...params, showArrows: params.team === this.player.team});
             this.spawnersMap[spawner.id] = spawner;
             this.spawnerGroups.get(spawner.team)?.add(spawner.graphic);
-            spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
-            spawner.subscribeOnClick((spawner, pointer) => this._onSpawnerClick(spawner, pointer));
+            spawner.noHP$.subscribe(() => this._makeSpawnerNeutral(spawner));
+            spawner.click$.subscribe((pointer) => this._onSpawnerClick(spawner, pointer));
         });
     }
 
@@ -293,7 +293,7 @@ export class Level1 extends Phaser.Scene {
         spawner.subscribeOnSpawn((s) => this._onSpawnerSpawnBubble(s));
         this._destroyBubble(bubble);
         spawner.createSpawnInterval();
-        spawner.subscribeWhenWillWithoutTeam(() => this._destroySpawner(spawner));
+        spawner.noHP$.subscribe(() => this._makeSpawnerNeutral(spawner));
         this.spawnerGroups.get(NO_TEAM)?.remove(spawnerGraphic);
         this.spawnerGroups.get(bubble.team)?.add(spawnerGraphic);
     }
@@ -358,10 +358,10 @@ export class Level1 extends Phaser.Scene {
         bubble.destroy();
     }
 
-    private _destroySpawner(spawner: Spawner): void {
+    private _makeSpawnerNeutral(spawner: Spawner): void {
         this.spawnerGroups.get(spawner.team)?.remove(spawner.graphic);
         this.spawnerGroups.get(NO_TEAM)?.add(spawner.graphic);
-        spawner.makeWithoutTeam();
+        spawner.makeNeutral();
     }
 
     private _onSpawnerSpawnBubble(spawner: Spawner): void {

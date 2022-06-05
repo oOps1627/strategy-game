@@ -6,7 +6,8 @@
   "license": "MIT",
   "dependencies": {
     "phaser": "^3.55.2",
-    "phaser3-rex-plugins": "^1.1.69"
+    "phaser3-rex-plugins": "^1.1.69",
+    "rxjs": "^7.5.5"
   },
   "devDependencies": {
     "@types/core-js": "^0.9.41",

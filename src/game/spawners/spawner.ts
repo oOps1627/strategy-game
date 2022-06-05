@@ -6,9 +6,9 @@ import Pointer = Phaser.Input.Pointer;
 import Triangle = Phaser.GameObjects.Triangle;
 import {getAngleForRotation, getPositionAfterMoving, isSamePosition} from "../helpers";
 import {COLOR_PALETTE} from "../color-palette";
+import { Subject } from "rxjs";
 
 export const NO_TEAM = '__NO_TEAM';
-export const NO_TEAM_COLOR = 0x666666;
 
 export interface IPossibleMove extends IPosition {
     disabled?: boolean;
@@ -30,14 +30,15 @@ export interface ISpawnerConstructorParams {
 }
 
 export class Spawner {
-    private _onWithoutTeam: ((spawner: Spawner) => void) | null;
     private _onSpawn: ((spawner: Spawner) => void) | null;
-    private _onClick: ((spawner: Spawner, pointer: Pointer) => void) | null;
     private _currentHP: number;
     private _spawnIntervalToClear;
     private _gameObjectFactory: GameObjectFactory;
     private _originSize: number;
-    private _capturingTeam: string;
+    private _click$ = new Subject<Pointer>();
+    private _noHP$ = new Subject<void>();
+    public click$ = this._click$.asObservable();
+    public noHP$ = this._noHP$.asObservable();
 
     readonly id = String(Date.now()) + String(Math.random());
     x: number;
@@ -90,7 +91,7 @@ export class Spawner {
         });
         this.graphic.setData('id', this.id);
         this.graphic.setInteractive();
-        this.graphic.on('pointerdown', (pointer) => this._onClick && this._onClick(this, pointer));
+        this.graphic.on('pointerdown', (pointer) => this._click$.next(pointer));
         if (this.showArrows) {
             this._createArrows();
         }
@@ -154,22 +155,14 @@ export class Spawner {
         }, this.spawnInterval);
     }
 
-    subscribeWhenWillWithoutTeam(cb: (spawner: Spawner) => void): void {
-        this._onWithoutTeam = cb;
-    }
-
-    subscribeOnClick(onClick: (spawner: Spawner, pointer: Pointer) => void): void {
-        this._onClick = onClick;
-    }
-
     subscribeOnSpawn(cb: (spawner: Spawner) => void): void {
         this._onSpawn = cb;
     }
 
     makeDamage(mass: number): void {
         this._currentHP -= mass;
-        if (this._currentHP <= 0 && this._onWithoutTeam) {
-            this._onWithoutTeam(this);
+        if (this._currentHP <= 0) {
+            this._noHP$.next();
         }
     }
 
@@ -180,11 +173,10 @@ export class Spawner {
         }
     }
 
-    makeWithoutTeam(): void {
+    makeNeutral(): void {
         this.team = NO_TEAM;
-        this.color = NO_TEAM_COLOR;
+        this.color = COLOR_PALETTE.NEUTRAL;
         this._currentHP = this.maxHP;
-        this._onSpawn = null;
         clearInterval(this._spawnIntervalToClear);
         this.updateGraphic();
     }
@@ -228,9 +220,9 @@ export class Spawner {
     }
 
     destroy(): void {
+        this._noHP$.complete();
+        this._click$.complete();
         this._onSpawn = null;
-        this._onWithoutTeam = null;
-        this._spawnIntervalToClear = null;
         this.graphic.destroy();
         this.textGraphic.destroy();
     }
