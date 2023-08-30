@@ -27,8 +27,6 @@ export class MainScene extends Phaser.Scene {
     spawnerGroups = new Map<string, Group>();
     bubblesMap: { [bubbleId: string]: Bubble } = {};
     spawnersMap: { [spawnerId: string]: Spawner } = {};
-    coinsText: Phaser.GameObjects.Text;
-    coinIcon: Phaser.GameObjects.Image;
     spawnerMenu: Menu | undefined;
     map: IMap;
 
@@ -37,7 +35,10 @@ export class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('coin', 'assets/coin.png');
+    }
+
+    init() {
+        this.scene.launch('UI');
     }
 
     create() {
@@ -58,7 +59,6 @@ export class MainScene extends Phaser.Scene {
 
         window.addEventListener('resize', () => {
             this._setCameraBounds();
-            this._setCoinBlockPosition();
         });
     }
 
@@ -76,7 +76,6 @@ export class MainScene extends Phaser.Scene {
 
         this._initSpawners(this.map.spawnersInfo);
         this._setCamera();
-        this._initCoin();
     }
 
     private _setCamera(): void {
@@ -135,19 +134,8 @@ export class MainScene extends Phaser.Scene {
         });
     }
 
-    private _initCoin(): void {
-        this.coinIcon = this.add.image(0, 0, 'coin').setScrollFactor(0);
-        this.coinsText = this.add.text(0, 0, String(this.player.coins)).setScrollFactor(0);
-        this._setCoinBlockPosition();
-    }
-
-    private _setCoinBlockPosition(): void {
-        this.coinIcon.setPosition(document.documentElement.clientWidth - 60, 17);
-        this.coinsText.setPosition(document.documentElement.clientWidth - 40, 10);
-    }
-
     private _redrawCoins(): void {
-        this.coinsText.setText(String(this.player.coins));
+        this.registry.events.emit('update_coins', this.player.coins);
     }
 
     private _onSpawnerClick(spawner: Spawner, pointer: Pointer): void {
