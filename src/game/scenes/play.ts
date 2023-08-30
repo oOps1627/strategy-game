@@ -1,23 +1,23 @@
 import * as Phaser from "phaser";
-import { IPossibleMove, NO_TEAM, Spawner } from "./spawners/spawner";
-import { IPosition } from "./models";
-import { Bubble } from "./bubbles/bubble";
-import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "./helpers";
-import { IMap, IMapPoint, ISpawnerInfo } from "./maps/map";
-import { SpawnersFactory } from "./spawners/spawners.factory";
-import { Player } from "./player/player";
+import { IPossibleMove, NO_TEAM, Spawner } from "../spawners/spawner";
+import { IPosition } from "../models";
+import { Bubble } from "../bubbles/bubble";
+import { getPositionAfterMoving, getRandomInteger, onlyUnique } from "../helpers";
+import { IMap, IMapPoint, ISpawnerInfo } from "../maps/map";
+import { SpawnersFactory } from "../spawners/spawners.factory";
+import { Player } from "../player/player";
 import Menu from "phaser3-rex-plugins/templates/ui/menu/Menu";
-import { ISpawnerMenuItem, SpawnerMenu } from "./spawners/spawner-menu";
-import { GAME_STATE } from "./game-state";
+import { ISpawnerMenuItem, SpawnerMenu } from "../spawners/spawner-menu";
+import { GAME_STATE } from "../game-state";
 import Pinch from "phaser3-rex-plugins/plugins/input/gestures/pinch/Pinch";
-import { COLOR_PALETTE } from "./color-palette";
+import { COLOR_PALETTE } from "../color-palette";
 import GameObjectWithBody = Phaser.Types.Physics.Arcade.GameObjectWithBody;
 import Ellipse = Phaser.GameObjects.Ellipse;
 import Group = Phaser.Physics.Arcade.Group;
 import Rectangle = Phaser.GameObjects.Rectangle;
 import Pointer = Phaser.Input.Pointer;
 
-export class MainScene extends Phaser.Scene {
+export class Play extends Phaser.Scene {
     player = new Player({
         startCoins: 80,
         team: 'TEAM_A'
@@ -31,7 +31,7 @@ export class MainScene extends Phaser.Scene {
     map: IMap;
 
     constructor() {
-        super('level-1');
+        super({key: 'Play'});
     }
 
     preload() {

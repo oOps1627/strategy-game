@@ -4,8 +4,9 @@ import Phaser from "phaser";
 import { COLOR_PALETTE } from "./color-palette";
 import UIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin";
 import GesturesPlugin from "phaser3-rex-plugins/plugins/gestures-plugin";
-import { MainScene } from "./main-scene";
+import { Play } from "./scenes/play";
 import UI from "./scenes/UI";
+import Menu from "./scenes/menu";
 
 export function loadGame(map: IMap): void {
     GAME_STATE.currentMap = map;
@@ -16,7 +17,7 @@ export function loadGame(map: IMap): void {
         width: map.width,
         height: map.height,
         parent: 'content',
-        scene: [MainScene, UI],
+        scene: [Menu, Play, UI],
         physics: {
             default: 'arcade',
             arcade: {
